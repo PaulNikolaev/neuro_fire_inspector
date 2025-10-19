@@ -23,7 +23,7 @@ async def main():
     dp = Dispatcher()
 
     register_handlers(dp)
-
+    print("🤖 Бот запущен и готов принимать вопросы!")
     logging.info("Бот запущен.")
     await dp.start_polling(bot)
 
