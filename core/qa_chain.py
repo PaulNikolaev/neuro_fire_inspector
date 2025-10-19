@@ -6,9 +6,7 @@ from core.retriever_init import retriever
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain, RetrievalQA
 
-# ==========================
 # Пути к промтам
-# ==========================
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 PROMPT_DIR = os.path.join(BASE_DIR, "prompts")
 
@@ -27,21 +25,15 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-# ==========================
 # Загрузка промтов
-# ==========================
 GUARDRAIL_TEMPLATE = load_prompt("guardrail_prompt.txt")
 INSPECTOR_TEMPLATE = load_prompt("inspector_prompt.txt")
 
-# ==========================
 # Guardrail
-# ==========================
 GUARDRAIL_PROMPT = PromptTemplate(template=GUARDRAIL_TEMPLATE, input_variables=["query"])
 guardrail_chain = LLMChain(llm=guard_chat, prompt=GUARDRAIL_PROMPT)
 
-# ==========================
 # RAG (Retrieval + QA)
-# ==========================
 INSPECTOR_PROMPT = PromptTemplate(template=INSPECTOR_TEMPLATE, input_variables=["context", "question"])
 qa_chain = RetrievalQA.from_chain_type(
     llm=chat,
@@ -52,11 +44,15 @@ qa_chain = RetrievalQA.from_chain_type(
 )
 
 
-# ==========================
 # Функция запроса к инспектору
-# ==========================
 def ask_inspector(query: str) -> Dict[str, Any]:
     print(f"\n🔹 Вопрос: {query}")
+
+    # Нормализуем запрос для проверки на исключения
+    normalized_query = query.strip().lower()
+
+    # Список командных слов, которые Guardrail должен пропустить.
+    EXCEPTIONS = ["старт", "инфо"]
 
     # Guardrail проверка
     guard_result = guardrail_chain.invoke({"query": query})
@@ -67,7 +63,7 @@ def ask_inspector(query: str) -> Dict[str, Any]:
 
     print(f"🛡 Guardrail: {guard_text}")
 
-    if guard_text in ["НЕТ", "НЕИЗВЕСТНО"]:
+    if guard_text in ["НЕТ", "НЕИЗВЕСТНО"] and normalized_query not in EXCEPTIONS:
         return {
             "result": "💡 Я могу отвечать только на вопросы по пожарной безопасности, нормативам и инструкциям.",
             "source_documents": []

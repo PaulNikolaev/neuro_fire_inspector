@@ -13,9 +13,7 @@ from core.model_init import (
     init_bm25_and_crossencoder
 )
 
-# ==========================
 # Инициализация моделей и индекс
-# ==========================
 print("🚀 Инициализация Retriever и моделей...")
 
 docs = load_structured_documents()
@@ -26,9 +24,7 @@ faiss_db = get_or_create_faiss(split_docs, embedding)
 bm25_model, cross_encoder = init_bm25_and_crossencoder(split_docs)
 
 
-# ==========================
 # Retriever
-# ==========================
 class RerankingRetrieverBM25(BaseRetriever):
     vectorstore: FAISS = Field(exclude=True)
     cross_encoder: CrossEncoder = Field(exclude=True)
@@ -52,9 +48,7 @@ class RerankingRetrieverBM25(BaseRetriever):
         return [doc for doc, _ in ranked[:self.k_final]]
 
 
-# ==========================
 # Экземпляр Retriever
-# ==========================
 retriever = RerankingRetrieverBM25(
     vectorstore=faiss_db,
     cross_encoder=cross_encoder,

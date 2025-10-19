@@ -10,9 +10,7 @@ from core.pdf_loader import extract_text_from_pdf, parse_articles
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import torch
 
-# ==========================
 # Пути
-# ==========================
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 PDF_DIR = os.path.join(DATA_DIR, "pdf_docs")
@@ -24,15 +22,12 @@ CROSSENCODER_PATH = os.path.join(CACHE_DIR, "crossencoder.pkl")
 os.makedirs(FAISS_DIR, exist_ok=True)
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-# ==========================
 # Устройство
-# ==========================
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"💻 Используем устройство: {DEVICE}")
 
-# ==========================
+
 # Загрузка и структурирование PDF
-# ==========================
 def load_structured_documents() -> List[Document]:
     structured_documents = []
     for filename in os.listdir(PDF_DIR):
@@ -50,18 +45,16 @@ def load_structured_documents() -> List[Document]:
     print(f"📘 Загружено {len(structured_documents)} статей")
     return structured_documents
 
-# ==========================
+
 # Разбиение документов
-# ==========================
 def split_documents(docs: List[Document]) -> List[Document]:
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200, length_function=len)
     split_docs = splitter.split_documents(docs)
     print(f"📑 Разбито на {len(split_docs)} чанков")
     return split_docs
 
-# ==========================
+
 # Embeddings
-# ==========================
 class HuggingFaceE5Embeddings(HuggingFaceEmbeddings):
     def embed_query(self, text: str) -> List[float]:
         return super().embed_query(f"query: {text}")
@@ -69,15 +62,15 @@ class HuggingFaceE5Embeddings(HuggingFaceEmbeddings):
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         return super().embed_documents([f"passage: {t}" for t in texts])
 
+
 def init_embeddings() -> HuggingFaceE5Embeddings:
     return HuggingFaceE5Embeddings(
         model_name="intfloat/multilingual-e5-large",
         model_kwargs={"device": DEVICE}
     )
 
-# ==========================
+
 # FAISS
-# ==========================
 def get_or_create_faiss(split_docs: List[Document], embedding: HuggingFaceE5Embeddings) -> FAISS:
     index_file = os.path.join(FAISS_DIR, "faiss.index")
     if os.path.exists(index_file):
@@ -88,9 +81,8 @@ def get_or_create_faiss(split_docs: List[Document], embedding: HuggingFaceE5Embe
     faiss_db.save_local(FAISS_DIR)
     return faiss_db
 
-# ==========================
+
 # BM25 и CrossEncoder
-# ==========================
 def init_bm25_and_crossencoder(split_docs: List[Document]) -> Tuple[BM25Okapi, CrossEncoder]:
     # BM25
     if os.path.exists(BM25_PATH):

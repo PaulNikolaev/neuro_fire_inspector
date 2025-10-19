@@ -36,7 +36,7 @@ def extract_text_from_pdf(path: str, min_length: int = 100) -> str:
     except Exception as e:
         print(f"⚠️ Ошибка чтения PDF {os.path.basename(path)}: {e}")
 
-    # нормализация переносов строк под Windows
+    # нормализация переносов строк
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     # если текста мало, используем OCR
@@ -53,11 +53,9 @@ def parse_articles(text: str) -> Dict[str, str]:
     Разбор текста нормативного акта на статьи.
     Возвращает словарь: {название статьи: текст статьи}
     """
-    # нормализация переносов строк
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     articles = {}
-    # паттерн ищет "Статья N" или "Статья N.M" и текст до следующей статьи
     pattern = re.compile(r"(Статья\s+\d+[\.\d]*)(.*?)(?=Статья\s+\d+|\Z)", re.DOTALL)
     for article, content in pattern.findall(text):
         articles[article.strip()] = content.strip()

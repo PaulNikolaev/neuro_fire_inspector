@@ -4,7 +4,7 @@ from langchain_community.chat_models.gigachat import GigaChat
 # Получаем токен GigaChat из переменной окружения
 GIGACHAT_TOKEN = os.getenv("GIGACHAT_API_KEY")
 
-# === Инициализация основного чата ===
+# Инициализация основного чата
 chat = GigaChat(
     credentials=GIGACHAT_TOKEN,
     # model="GigaChat-Pro",
@@ -12,7 +12,7 @@ chat = GigaChat(
     streaming=False
 )
 
-# === Дополнительный чат для валидации / безопасных ответов (опционально) ===
+# Дополнительный чат для валидации / безопасных ответов
 guard_chat = GigaChat(
     credentials=GIGACHAT_TOKEN,
     # model="GigaChat",
