@@ -18,11 +18,13 @@ def load_prompt(filename: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    """Очистка текста от Markdown и лишних переносов."""
-    text = re.sub(r"^\s*-\s*", "", text, flags=re.MULTILINE)  # убрать маркеры списка в начале строк
-    text = re.sub(r"\*+", "", text)  # убрать звёздочки
-    text = re.sub(r"---+", "", text)  # убрать ---
-    # text = re.sub(r"\n{2,}", "\n", text)  # убрать лишние пустые строки
+    """Очистка текста от Markdown-маркеров заголовков, цитат и лишних переносов, сохраняя при этом ссылки на пункты и статьи (в скобках)."""
+    text = re.sub(r"^\s*#+\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*-\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\*+", "", text)
+    text = re.sub(r"---+", "", text)
+    text = re.sub(r"^\s*>\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\n{2,}", "\n", text)
     return text.strip()
 
 
