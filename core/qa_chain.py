@@ -18,13 +18,12 @@ def load_prompt(filename: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    """Очистка текста от Markdown-маркеров заголовков, цитат и лишних переносов, сохраняя при этом ссылки на пункты и статьи (в скобках)."""
+    """Очистка текста от Markdown-маркеров заголовков, цитат и лишних переносов."""
     text = re.sub(r"^\s*#+\s*", "", text, flags=re.MULTILINE)
     text = re.sub(r"^\s*-\s*", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*+", "", text)
     text = re.sub(r"---+", "", text)
     text = re.sub(r"^\s*>\s*", "", text, flags=re.MULTILINE)
-    text = re.sub(r"\n{2,}", "\n", text)
     return text.strip()
 
 
