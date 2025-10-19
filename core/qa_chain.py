@@ -19,15 +19,36 @@ def load_prompt(filename: str) -> str:
 
 def clean_text(text: str) -> str:
     """Очистка текста от Markdown и лишних переносов."""
+    text = re.sub(r"^\s*-\s*", "", text, flags=re.MULTILINE)  # убрать маркеры списка в начале строк
     text = re.sub(r"\*+", "", text)  # убрать звёздочки
     text = re.sub(r"---+", "", text)  # убрать ---
-    text = re.sub(r"\n{2,}", "\n", text)  # убрать лишние пустые строки
+    # text = re.sub(r"\n{2,}", "\n", text)  # убрать лишние пустые строки
     return text.strip()
 
 
 # Загрузка промтов
 GUARDRAIL_TEMPLATE = load_prompt("guardrail_prompt.txt")
 INSPECTOR_TEMPLATE = load_prompt("inspector_prompt.txt")
+
+#  Константы
+START_INFO_RESPONSE = (
+    "👋 Привет! Я — Нейро-инспектор государственного пожарного надзора. "
+    "Моя задача — консультировать вас по вопросам пожарной безопасности, "
+    "законодательства РФ и нормативным актам (ФЗ, Постановления, СП, Приказы). "
+    "Просто задайте свой вопрос по теме!"
+)
+# Ответ для вопросов "О СЕБЕ"
+ABOUT_ME_RESPONSE = (
+    "💡 Я — Нейро-инспектор государственного пожарного надзора. "
+    "Моя основная задача — предоставлять точную информацию по пожарной безопасности, "
+    "опираясь на нормативные акты РФ. Я могу проконсультировать вас по требованиям "
+    "законодательства, служебным инструкциям и помочь найти ответы в предоставленной базе знаний. "
+    "Спрашивайте!"
+)
+# Ответ для вопросов "НЕТ" (не по теме)
+OFF_TOPIC_RESPONSE = "💡 Я могу отвечать только на вопросы по пожарной безопасности, нормативам и инструкциям."
+# Список командных слов, которые Guardrail должен пропустить
+EXCEPTIONS = ["старт", "инфо", "/start", "/info"]
 
 # Guardrail
 GUARDRAIL_PROMPT = PromptTemplate(template=GUARDRAIL_TEMPLATE, input_variables=["query"])
@@ -51,40 +72,64 @@ def ask_inspector(query: str) -> Dict[str, Any]:
     # Нормализуем запрос для проверки на исключения
     normalized_query = query.strip().lower()
 
-    # Список командных слов, которые Guardrail должен пропустить.
-    EXCEPTIONS = ["старт", "инфо"]
+    # Обработка команд-исключений (СТАРТ, ИНФО)
+    if normalized_query in EXCEPTIONS:
+        print(f"Обработка исключения: {normalized_query}")
+        return {
+            "result": START_INFO_RESPONSE,
+            "source_documents": []
+        }
 
     # Guardrail проверка
     guard_result = guardrail_chain.invoke({"query": query})
+
+    # Извлечение и нормализация ответа Guardrail
     if isinstance(guard_result, dict):
         guard_text = guard_result.get("text", "").strip().upper()
     else:
         guard_text = str(guard_result).strip().upper()
 
-    print(f"🛡 Guardrail: {guard_text}")
+    # Дополнительная чистка (оставляем только русские заглавные буквы)
+    guard_text = re.sub(r"[^А-Я\s]", "", guard_text).strip()
 
-    if guard_text in ["НЕТ", "НЕИЗВЕСТНО"] and normalized_query not in EXCEPTIONS:
+    # Обработка результатов Guardrail
+    if guard_text == "О СЕБЕ":
         return {
-            "result": "💡 Я могу отвечать только на вопросы по пожарной безопасности, нормативам и инструкциям.",
+            "result": ABOUT_ME_RESPONSE,
             "source_documents": []
         }
 
-    # RAG: получение релевантных документов и формирование контекста
-    retriever_docs = retriever._get_relevant_documents(query)
-    context_text = "\n".join([clean_text(doc.page_content) for doc in retriever_docs])
-    prompt_text = INSPECTOR_PROMPT.format(context=context_text, question=query)
-    response_msg = chat.invoke(prompt_text)
+    if guard_text == "НЕТ" or not guard_text:
+        return {
+            "result": OFF_TOPIC_RESPONSE,
+            "source_documents": []
+        }
 
-    if hasattr(response_msg, "content"):
-        response_text = response_msg.content
-    elif isinstance(response_msg, dict) and "text" in response_msg:
-        response_text = response_msg["text"]
-    else:
-        response_text = str(response_msg)
+    # RAG: выполнение цепочки для "ДА" (пожарная безопасность)
+    if guard_text == "ДА":
+        retriever_docs = retriever.get_relevant_documents(query)
 
-    response_text = clean_text(response_text)
+        context_text = "\n\n---\n\n".join([clean_text(doc.page_content) for doc in retriever_docs])
+
+        prompt_text = INSPECTOR_PROMPT.format(context=context_text, question=query)
+        response_msg = chat.invoke(prompt_text)
+
+        response_text = ""
+        if hasattr(response_msg, "content"):
+            response_text = response_msg.content
+        elif isinstance(response_msg, dict) and "text" in response_msg:
+            response_text = response_msg["text"]
+        else:
+            response_text = str(response_msg)
+
+        response_text = clean_text(response_text)
+
+        return {
+            "result": response_text,
+            "source_documents": retriever_docs
+        }
 
     return {
-        "result": response_text,
-        "source_documents": retriever_docs
+        "result": OFF_TOPIC_RESPONSE,
+        "source_documents": []
     }
